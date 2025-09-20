@@ -84,6 +84,43 @@ ToPython[complexFunc]
 (* Prints the Python equivalent with proper np.exp, np.cos, np.sqrt conversions *)
 
 (* ::Section:: *)
+(*Square Root Combination Examples*)
+
+(* Basic square root combination *)
+CombineSqrt[Sqrt[a]*Sqrt[b]]
+(* Expected: Sqrt[a*b] *)
+
+(* Division of square roots *)
+CombineSqrt[Sqrt[a]/Sqrt[b]]
+(* Expected: Sqrt[a/b] *)
+
+(* Mathematically rigorous examples with assumptions *)
+CombineSqrt[Sqrt[a]*Sqrt[b], a > 0 && b > 0]
+(* Expected: Sqrt[a*b] *)
+
+CombineSqrt[Sqrt[a]*Sqrt[b], a < 0 && b < 0]
+(* Expected: -Sqrt[a*b] *)
+
+CombineSqrt[Sqrt[a]*Sqrt[b], a < 0 && b > 0]
+(* Expected: Sqrt[a*b] *)
+
+(* Complex example from user's question *)
+CombineSqrt[Sqrt[a]*Sqrt[1+b], a < 0 && b < -1]
+(* Expected: -Sqrt[a*(1+b)] *)
+
+(* Multiple square roots *)
+CombineSqrt[Sqrt[x]*Sqrt[y]*Sqrt[z], x < 0 && y < 0 && z > 0]
+(* Expected: -Sqrt[x*y*z] *)
+
+(* Integration with Python conversion *)
+ToPythonString[CombineSqrt[Sqrt[a]*Sqrt[1+b], a < 0 && b < -1]]
+(* Expected: "-(a*(1 + b))**(1/2)" *)
+
+(* Insufficient assumptions - should remain unchanged *)
+CombineSqrt[Sqrt[x]*Sqrt[y], x > 0]
+(* Expected: Sqrt[x]*Sqrt[y] (unchanged) *)
+
+(* ::Section:: *)
 (*Testing Various Mathematical Operations*)
 
 (* Fractions *)
@@ -97,3 +134,7 @@ ToPythonString[{a, b, c, d}]
 
 (* Mathematical constants *)
 ToPythonString[Pi*E^x + Log[y]]
+
+(* Combined workflow: CombineSqrt + ToPythonString *)
+ToPythonString[CombineSqrt[Sqrt[\[Phi]]*Sqrt[\[Psi]]/Sqrt[\[Chi]]]]
+(* Expected: "((phi*psi)/chi)**(1/2)" *)

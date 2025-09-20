@@ -85,6 +85,37 @@ ToPythonString[ς*(υ^2 + τ*ω)]
 (* Output: (varsigma * ((upsilon**2) + (tau * omega))) *)
 ```
 
+### Square Root Combination
+
+```mathematica
+(* Basic square root combination (assumes positive variables) *)
+CombineSqrt[Sqrt[a]*Sqrt[b]]
+(* Output: Sqrt[a*b] *)
+
+(* Division of square roots *)
+CombineSqrt[Sqrt[a]/Sqrt[b]]
+(* Output: Sqrt[a/b] *)
+
+(* Mathematically rigorous with assumptions *)
+CombineSqrt[Sqrt[a]*Sqrt[b], a > 0 && b > 0]
+(* Output: Sqrt[a*b] *)
+
+CombineSqrt[Sqrt[a]*Sqrt[b], a < 0 && b < 0]
+(* Output: -Sqrt[a*b] *)
+
+(* Complex example with mixed signs *)
+CombineSqrt[Sqrt[x-5]*Sqrt[y]*Sqrt[z], x < 5 && y < 0 && z > 0]
+(* Output: -Sqrt[(x-5)*y*z] *)
+
+(* Integration with Python conversion *)
+ToPythonString[CombineSqrt[Sqrt[a]*Sqrt[1+b], a < 0 && b < -1]]
+(* Output: "-(a*(1 + b))**(1/2)" *)
+
+(* Insufficient assumptions - remains unchanged *)
+CombineSqrt[Sqrt[x]*Sqrt[y], x > 0]
+(* Output: Sqrt[x]*Sqrt[y] (unchanged because y's sign unknown) *)
+```
+
 ### Function Conversion
 
 ```mathematica
@@ -156,56 +187,43 @@ ToPython[stigmaFunc, "physics_functions.py", True]
 - `Pi` → `np.pi`
 - `E` → `np.e`
 
-### Greek Letters (Universal Support)
-The package automatically converts any Greek letter using the pattern `\[Name] → name`:
-- `τ` (\\[Tau]) → `tau`
-- `φ` (\\[Phi]) → `phi`
-- `α` (\\[Alpha]) → `alpha`
-- `β` (\\[Beta]) → `beta`
-- `γ` (\\[Gamma]) → `gamma`
-- `δ` (\\[Delta]) → `delta`
-- `λ` (\\[Lambda]) → `lambda`
-- `μ` (\\[Mu]) → `mu`
-- `ν` (\\[Nu]) → `nu`
-- `ω` (\\[Omega]) → `omega`
-- `θ` (\\[Theta]) → `theta`
-- `ς` (\\[FinalSigma]) → `finalsigma`
-- And **all other** Greek letters automatically!
+### Square Root Combination
+- `CombineSqrt[expr]` → Combines square roots syntactically (assumes positive variables)
+- `CombineSqrt[expr, assumptions]` → Mathematically rigorous combination with proper sign handling
 
 ### Data Structures
 - `{a, b, c}` → `np.array([a, b, c])`
 
-## Examples for Stigma Theory
-
-```mathematica
-(* Load the package *)
-Get["WolfPy/WolfPy.m"]
-
-(* Define a Stigma theory function *)
-stigmaFunc[τ_, ς_, υ_] := Exp[-ς*τ]*Cos[υ*τ]
-
-(* Convert to Python *)
-ToPython[stigmaFunc]
-(* Output:
-def stigmaFunc(tau, varsigma, upsilon):
-    return (np.exp(((-varsigma) * tau)) * np.cos((upsilon * tau)))
-*)
-
-(* Power series example *)
-powerSeries[τ_] := a1*τ + a2*τ^2 + a3*τ^3
-ToPython[powerSeries, "stigma_functions.py"]
-```
 
 ## Requirements
 
 - Mathematica (tested on version 12+)
 - Python with NumPy (for using the generated Python code)
 
+## Mathematical Notes
+
+### Square Root Combination (`CombineSqrt`)
+
+The `CombineSqrt` function handles the mathematical identity `√a × √b = √(ab)`, which is **not always true** for complex numbers or negative values.
+
+**Mathematical Background:**
+- `√a × √b = √(ab)` when at least one of `a, b ≥ 0`
+- `√a × √b = -√(ab)` when both `a, b < 0`
+
+**Examples:**
+- `√4 × √9 = 2 × 3 = 6 = √36` ✓
+- `√(-4) × √(-9) = (2i) × (3i) = -6 ≠ √36 = 6` ✗
+
+**Usage Modes:**
+1. **Syntactic Mode**: `CombineSqrt[expr]` assumes positive variables (fast, cosmetic)
+2. **Rigorous Mode**: `CombineSqrt[expr, assumptions]` uses mathematical assumptions for correct signs
+
 ## Limitations
 
 - Derivatives require manual handling
 - Some advanced Mathematica functions may not have direct NumPy equivalents
 - Complex nested structures may need manual adjustment
+- `CombineSqrt` without assumptions may produce incorrect results for complex/negative numbers
 
 ## Contributing
 

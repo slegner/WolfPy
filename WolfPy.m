@@ -13,6 +13,14 @@ ToPythonString::usage = "ToPythonString[expr] converts a Mathematica expression 
 ToPythonString[expr, \"file.py\"] converts the expression and saves it to the specified file.
 ToPythonString[expr, \"file.py\", True] appends to the file instead of overwriting.";
 
+CombineSqrt::usage = "CombineSqrt[expr] combines square roots in mathematical expressions with proper sign handling.
+CombineSqrt[expr] - assumes variables are positive (syntactic transformation)
+CombineSqrt[expr, assumptions] - mathematically rigorous with assumption checking
+- Sqrt[a]*Sqrt[b] → Sqrt[a*b] when at least one of a,b ≥ 0
+- Sqrt[a]*Sqrt[b] → -Sqrt[a*b] when both a,b < 0
+- Similar logic for division and multiple terms
+Examples: CombineSqrt[Sqrt[a]*Sqrt[b], a < 0 && b < 0] gives -Sqrt[a*b]";
+
 (* ::Section:: *)
 (*Implementation*)
 
@@ -197,6 +205,48 @@ ToPython[f_Symbol, file_String : "", append_: False] := Module[
   
   pyFunc
 ];
+
+(* CombineSqrt: Combines square roots in mathematical expressions with optional assumption checking *)
+CombineSqrt[expr_, assumptions_: True] :=
+  Collect[
+    expr //.
+      (HoldPattern[Times[args__]] /; (Count[{args}, Power[_, Rational[1, 2]] | Power[_, Rational[-1, 2]]] >= 2) :>
+        Module[{numArgs, denArgs, others, allArgs, allSigns, numNegative, signFactor},
+          
+          (* Extract the arguments of square roots and inverse square roots *)
+          numArgs = Cases[{args}, Power[x_, Rational[1, 2]] :> x];
+          denArgs = Cases[{args}, Power[x_, Rational[-1, 2]] :> x];
+          others = Cases[{args}, Except[Power[_, Rational[1, 2]] | Power[_, Rational[-1, 2]]]];
+          
+          (* If no assumptions provided or assumptions is True, use simple combination *)
+          If[assumptions === True,
+            (* Simple syntactic transformation (original behavior) *)
+            Times @@ others * Sqrt[(Times @@ numArgs) / (Times @@ denArgs)],
+            
+            (* Mathematically rigorous transformation with assumption checking *)
+            allArgs = Join[numArgs, denArgs];
+            allSigns = Quiet[Simplify[Sign[#], assumptions]] & /@ allArgs;
+            
+            (* Check if any sign is indeterminate - if so, don't transform *)
+            If[AnyTrue[allSigns, !MemberQ[{-1, 0, 1}, #] &],
+              (* Return unchanged to prevent transformation *)
+              Inactive[Times][args],
+              
+              (* All signs are known, proceed with correct sign factor *)
+              numNegative = Count[allSigns, -1];
+              
+              (* Sign factor: (-1)^(number of negative pairs) *)
+              signFactor = (-1)^Quotient[numNegative, 2];
+              
+              signFactor * Times @@ others * Sqrt[(Times @@ numArgs) / (Times @@ denArgs)]
+            ]
+          ]
+        ]),
+    _Sqrt
+  ] /. Inactive[Times][args_] :> Times[args];
+
+(* Set HoldFirst attribute to prevent argument evaluation *)
+SetAttributes[CombineSqrt, HoldFirst];
 
 End[]; (* `Private` *)
 
