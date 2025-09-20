@@ -1,0 +1,22 @@
+# Mathematica temporary files
+*.nb.bak
+*.m.bak
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Backup directories created by installer
+*.backup.*
+
+# Output files from examples
+output/
+functions/
+*.py
+
+# Log files
+*.log
+
+# Temporary directories
+temp/
+tmp/

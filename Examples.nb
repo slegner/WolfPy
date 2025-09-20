@@ -1,0 +1,99 @@
+(* ::Package:: *)
+
+(* ::Title:: *)
+(*WolfPy Package Examples*)
+
+(* ::Section:: *)
+(*Loading the Package*)
+
+(* Load WolfPy package *)
+<<WolfPy`
+
+(* ::Section:: *)
+(*Basic Expression Conversion*)
+
+(* Convert simple expressions *)
+ToPythonString[a^2 + b*c]
+(* Prints: ((a**2) + (b * c)) *)
+
+ToPythonString[\[Alpha]^2 + \[Beta]*\[Gamma]]
+(* Prints: ((alpha**2) + (beta * gamma)) *)
+
+(* ::Section:: *)
+(*Stigma Theory Examples*)
+
+(* Example with Stigma theory variables *)
+ToPythonString[\[Varsigma]*(\[Upsilon]^2 + \[Tau]*\[Omega])]
+(* Prints: (varsigma * ((upsilon**2) + (tau * omega))) *)
+
+(* More complex expression with square roots *)
+ToPythonString[Sqrt[\[Varsigma] - \[Varpi]^2]]
+(* Prints: np.sqrt((varsigma + ((-1) * (varpi**2)))) *)
+
+(* ::Section:: *)
+(*Function Definition Examples*)
+
+(* Define a simple function *)
+testFunc[x_] := x^2 + Sin[x]
+
+(* Convert to Python (prints automatically) *)
+ToPython[testFunc]
+(* Prints:
+def testFunc(x):
+    return ((x**2) + np.sin(x))
+*)
+
+(* Define a function with Greek letters like your Stigma theory *)
+stigmaFunc[\[Tau]_, \[Varsigma]_, \[Upsilon]_] := Exp[-\[Varsigma]*\[Tau]]*Cos[\[Upsilon]*\[Tau]]
+
+(* Convert to Python *)
+ToPython[stigmaFunc]
+(* Prints:
+def stigmaFunc(tau, varsigma, upsilon):
+    return (np.exp(((-varsigma) * tau)) * np.cos((upsilon * tau)))
+*)
+
+(* ::Section:: *)
+(*Saving to Files*)
+
+(* Save expression to file *)
+ToPythonString[a^2 + b/c, "test_expression.py"]
+
+(* Save function to file *)
+ToPython[testFunc, "test_function.py"]
+
+(* Append to existing file *)
+ToPython[stigmaFunc, "test_function.py", True]
+
+(* ::Section:: *)
+(*Complex Mathematical Expressions*)
+
+(* Power series example (like your early time series) *)
+powerSeries[\[Tau]_] := a1*\[Tau] + a2*\[Tau]^2 + a3*\[Tau]^3
+
+ToPython[powerSeries]
+(* Prints:
+def powerSeries(tau):
+    return (((a1 * tau) + (a2 * (tau**2))) + (a3 * (tau**3)))
+*)
+
+(* Trigonometric and exponential combinations *)
+complexFunc[t_, \[Omega]_, \[Zeta]_] := Exp[-\[Zeta]*\[Omega]*t]*Cos[\[Omega]*Sqrt[1 - \[Zeta]^2]*t]
+
+ToPython[complexFunc]
+(* Prints the Python equivalent with proper np.exp, np.cos, np.sqrt conversions *)
+
+(* ::Section:: *)
+(*Testing Various Mathematical Operations*)
+
+(* Fractions *)
+ToPythonString[a/b + c/d]
+
+(* Powers and roots *)
+ToPythonString[x^(1/2) + y^(-1) + z^(3/2)]
+
+(* Lists (convert to numpy arrays) *)
+ToPythonString[{a, b, c, d}]
+
+(* Mathematical constants *)
+ToPythonString[Pi*E^x + Log[y]]
