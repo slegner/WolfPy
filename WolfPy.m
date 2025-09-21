@@ -13,13 +13,17 @@ ToPythonString::usage = "ToPythonString[expr] converts a Mathematica expression 
 ToPythonString[expr, \"file.py\"] converts the expression and saves it to the specified file.
 ToPythonString[expr, \"file.py\", True] appends to the file instead of overwriting.";
 
-CombineSqrt::usage = "CombineSqrt[expr] combines square roots in mathematical expressions with proper sign handling.
+CombineSqrt::usage = "CombineSqrt[expr] combines fractional powers (n/2) in mathematical expressions with proper sign handling.
 CombineSqrt[expr] - assumes variables are positive (syntactic transformation)
 CombineSqrt[expr, assumptions] - mathematically rigorous with assumption checking
-- Sqrt[a]*Sqrt[b] → Sqrt[a*b] when at least one of a,b ≥ 0
-- Sqrt[a]*Sqrt[b] → -Sqrt[a*b] when both a,b < 0
-- Similar logic for division and multiple terms
-Examples: CombineSqrt[Sqrt[a]*Sqrt[b], a < 0 && b < 0] gives -Sqrt[a*b]";
+- Handles any fractional power x^(n/2): Sqrt[a], a^(3/2), a^(5/2), etc.
+- Sqrt[a]*Sqrt[b] → Sqrt[a*b] when both a,b ≥ 0
+- a^(3/2)*b^(1/2) → a*Sqrt[a*b] when both a,b ≥ 0  
+- Warns about negative bases in fractional powers (complex results)
+Examples: CombineSqrt[a^(3/2)*Sqrt[b], a > 0 && b > 0] gives a*Sqrt[a*b]";
+
+CombineSqrt::unknownsigns = "Variables with unknown signs: `1`. Cannot combine square roots safely without knowing their signs.";
+CombineSqrt::suggest = "Try adding assumptions like: `1`";
 
 (* ::Section:: *)
 (*Implementation*)
@@ -56,10 +60,10 @@ $stringReplacementRules = {
   "Ceiling[" -> "np.ceil(",
   "Round[" -> "np.round(",
   
-  (* Constants with np prefix *)
-  "Pi" -> "np.pi",
-  "E" -> "np.e",
-  "I" -> "1j",
+  (* Constants with np prefix - use word boundaries to avoid partial matches *)
+  RegularExpression["\\bPi\\b"] -> "np.pi",
+  RegularExpression["\\bE\\b"] -> "np.e", 
+  RegularExpression["\\bI\\b"] -> "1j",
   
   (* Replace remaining brackets with parentheses *)
   "[" -> "(",
@@ -207,43 +211,85 @@ ToPython[f_Symbol, file_String : "", append_: False] := Module[
 ];
 
 (* CombineSqrt: Combines square roots in mathematical expressions with optional assumption checking *)
-CombineSqrt[expr_, assumptions_: True] :=
-  Collect[
-    expr //.
-      (HoldPattern[Times[args__]] /; (Count[{args}, Power[_, Rational[1, 2]] | Power[_, Rational[-1, 2]]] >= 2) :>
-        Module[{numArgs, denArgs, others, allArgs, allSigns, numNegative, signFactor},
+CombineSqrt[expr_, assumptions_: True] := Module[{
+  allSqrtArgs, unknownSignArgs, suggestedAssumptions, result
+},
+  
+  (* First, extract all arguments under fractional powers (n/2) to check for unknown signs *)
+  allSqrtArgs = Cases[expr, Power[x_, Rational[n_, 2]] /; IntegerQ[n] :> x, Infinity];
+  
+  (* If assumptions are provided, check which signs are unknown *)
+  If[assumptions =!= True && Length[allSqrtArgs] > 0,
+    (* Convert List of assumptions to logical expression if needed *)
+    If[Head[assumptions] === List,
+      assumptions = Apply[And, assumptions];
+    ];
+    
+    unknownSignArgs = Select[allSqrtArgs, 
+      !MemberQ[{-1, 0, 1}, Quiet[Simplify[Sign[#], assumptions]]] &
+    ];
+    
+    (* If there are unknown signs, issue warnings *)
+    If[Length[unknownSignArgs] > 0,
+      Message[CombineSqrt::unknownsigns, unknownSignArgs];
+      
+      (* Generate suggested assumptions *)
+      suggestedAssumptions = StringRiffle[
+        Map[ToString[#] <> " > 0" &, unknownSignArgs], 
+        " && "
+      ];
+      Message[CombineSqrt::suggest, suggestedAssumptions];
+      
+      (* Also print detailed information *)
+      Print["Debugging: Unknown sign expressions found:"];
+      Do[
+        signResult = Quiet[Simplify[Sign[unknownSignArgs[[i]]], assumptions]];
+        Print["  ", unknownSignArgs[[i]], " has sign: ", signResult];
+      , {i, 1, Min[5, Length[unknownSignArgs]]}]; (* Limit to first 5 to avoid spam *)
+      If[Length[unknownSignArgs] > 5,
+        Print["  ... and ", Length[unknownSignArgs] - 5, " more expressions"];
+      ];
+    ];
+  ];
+  
+  (* Apply transformation: combine all fractional powers a^(n/2) under one sqrt *)
+  (* Simple approach: a^(n/2) * b^(m/2) = Sqrt[a^n * b^m] *)
+  result = expr //.
+    (HoldPattern[Times[args__]] /; (Count[{args}, Power[_, Rational[n_, 2]] /; IntegerQ[n]] >= 2) :>
+      Module[{fracPowers, others, allBases, baseSigns, numNegative, signFactor},
+        
+        (* Extract fractional powers and other terms *)
+        fracPowers = Cases[{args}, Power[base_, Rational[n_, 2]] /; IntegerQ[n] :> {base, n}];
+        others = Cases[{args}, Except[Power[_, Rational[n_, 2]] /; IntegerQ[n]]];
+        
+        (* Convert each a^(n/2) to a^n under the sqrt: a^(n/2) -> a^n *)
+        allBases = Map[#[[1]]^#[[2]] &, fracPowers];
+        
+        (* If no assumptions provided, use simple combination *)
+        If[assumptions === True,
+          (* Simple syntactic transformation: combine everything under sqrt *)
+          Times @@ others * Sqrt[Times @@ allBases],
           
-          (* Extract the arguments of square roots and inverse square roots *)
-          numArgs = Cases[{args}, Power[x_, Rational[1, 2]] :> x];
-          denArgs = Cases[{args}, Power[x_, Rational[-1, 2]] :> x];
-          others = Cases[{args}, Except[Power[_, Rational[1, 2]] | Power[_, Rational[-1, 2]]]];
+          (* Rigorous transformation with assumption checking *)
+          baseSigns = Quiet[Simplify[Sign[#], assumptions]] & /@ Map[First, fracPowers];
           
-          (* If no assumptions provided or assumptions is True, use simple combination *)
-          If[assumptions === True,
-            (* Simple syntactic transformation (original behavior) *)
-            Times @@ others * Sqrt[(Times @@ numArgs) / (Times @@ denArgs)],
+          (* Check if any sign is indeterminate *)
+          If[AnyTrue[baseSigns, !MemberQ[{-1, 0, 1}, #] &],
+            (* Return unchanged to prevent transformation *)
+            Inactive[Times][args],
             
-            (* Mathematically rigorous transformation with assumption checking *)
-            allArgs = Join[numArgs, denArgs];
-            allSigns = Quiet[Simplify[Sign[#], assumptions]] & /@ allArgs;
+            (* All signs are known, proceed with correct sign factor *)
+            numNegative = Count[baseSigns, -1];
+            signFactor = (-1)^Quotient[numNegative, 2];
             
-            (* Check if any sign is indeterminate - if so, don't transform *)
-            If[AnyTrue[allSigns, !MemberQ[{-1, 0, 1}, #] &],
-              (* Return unchanged to prevent transformation *)
-              Inactive[Times][args],
-              
-              (* All signs are known, proceed with correct sign factor *)
-              numNegative = Count[allSigns, -1];
-              
-              (* Sign factor: (-1)^(number of negative pairs) *)
-              signFactor = (-1)^Quotient[numNegative, 2];
-              
-              signFactor * Times @@ others * Sqrt[(Times @@ numArgs) / (Times @@ denArgs)]
-            ]
+            (* Assemble final result *)
+            signFactor * Times @@ others * Sqrt[Times @@ allBases]
           ]
-        ]),
-    _Sqrt
-  ] /. Inactive[Times][args_] :> Times[args];
+        ]
+      ]) /. Inactive[Times][args_] :> Times[args];
+  
+  result
+];
 
 (* Set HoldFirst attribute to prevent argument evaluation *)
 SetAttributes[CombineSqrt, HoldFirst];

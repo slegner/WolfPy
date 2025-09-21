@@ -85,7 +85,7 @@ ToPythonString[ς*(υ^2 + τ*ω)]
 (* Output: (varsigma * ((upsilon**2) + (tau * omega))) *)
 ```
 
-### Square Root Combination
+### Enhanced Square Root and Fractional Power Combination
 
 ```mathematica
 (* Basic square root combination (assumes positive variables) *)
@@ -96,6 +96,17 @@ CombineSqrt[Sqrt[a]*Sqrt[b]]
 CombineSqrt[Sqrt[a]/Sqrt[b]]
 (* Output: Sqrt[a/b] *)
 
+(* NEW: General fractional powers a^(n/2) *)
+CombineSqrt[a^(3/2) * b^(1/2)]
+(* Output: Sqrt[a^3 * b] *)
+
+CombineSqrt[a^(5/2) * b^(-1/2) * c^(3/2)]
+(* Output: Sqrt[a^5 * c^3 / b] *)
+
+(* NEW: Negative fractional powers (common in physics) *)
+CombineSqrt[ups2^(-3/2) * stigma^(1/2)]
+(* Output: Sqrt[stigma / ups2^3] *)
+
 (* Mathematically rigorous with assumptions *)
 CombineSqrt[Sqrt[a]*Sqrt[b], a > 0 && b > 0]
 (* Output: Sqrt[a*b] *)
@@ -103,13 +114,13 @@ CombineSqrt[Sqrt[a]*Sqrt[b], a > 0 && b > 0]
 CombineSqrt[Sqrt[a]*Sqrt[b], a < 0 && b < 0]
 (* Output: -Sqrt[a*b] *)
 
-(* Complex example with mixed signs *)
-CombineSqrt[Sqrt[x-5]*Sqrt[y]*Sqrt[z], x < 5 && y < 0 && z > 0]
-(* Output: -Sqrt[(x-5)*y*z] *)
+(* Complex fractional power example *)
+CombineSqrt[a^(3/2)*b^(1/2), a > 0 && b > 0]
+(* Output: Sqrt[a^3 * b] *)
 
 (* Integration with Python conversion *)
-ToPythonString[CombineSqrt[Sqrt[a]*Sqrt[1+b], a < 0 && b < -1]]
-(* Output: "-(a*(1 + b))**(1/2)" *)
+ToPythonString[CombineSqrt[a^(3/2)*Sqrt[b]]]
+(* Output: "(a**3 * b)**(1/2)" *)
 
 (* Insufficient assumptions - remains unchanged *)
 CombineSqrt[Sqrt[x]*Sqrt[y], x > 0]
@@ -187,9 +198,11 @@ ToPython[stigmaFunc, "physics_functions.py", True]
 - `Pi` → `np.pi`
 - `E` → `np.e`
 
-### Square Root Combination
-- `CombineSqrt[expr]` → Combines square roots syntactically (assumes positive variables)
+### Enhanced Square Root and Fractional Power Combination
+- `CombineSqrt[expr]` → Combines fractional powers `a^(n/2)` syntactically (assumes positive variables)
 - `CombineSqrt[expr, assumptions]` → Mathematically rigorous combination with proper sign handling
+- Handles any fractional power: `a^(3/2)`, `a^(-5/2)`, etc.
+- Combines multiple terms: `a^(3/2)*b^(1/2)` → `Sqrt[a^3*b]`
 
 ### Data Structures
 - `{a, b, c}` → `np.array([a, b, c])`

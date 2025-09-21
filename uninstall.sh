@@ -31,16 +31,37 @@ print_error() {
 
 # Function to find user Applications directory
 find_user_applications_dir() {
-    # Platform-specific paths
+    # Platform-specific paths - check both Wolfram and Mathematica directories
     case "$(uname)" in
         "Darwin")  # macOS
-            USER_APPS_DIR="$HOME/Library/Mathematica/Applications"
+            # Check both locations for WolfPy installation
+            if [ -d "$HOME/Library/Wolfram/Applications/WolfPy" ]; then
+                USER_APPS_DIR="$HOME/Library/Wolfram/Applications"
+            elif [ -d "$HOME/Library/Mathematica/Applications/WolfPy" ]; then
+                USER_APPS_DIR="$HOME/Library/Mathematica/Applications"
+            else
+                USER_APPS_DIR="$HOME/Library/Wolfram/Applications"  # Default for newer versions
+            fi
             ;;
         "Linux")
-            USER_APPS_DIR="$HOME/.Mathematica/Applications"
+            # Check both locations for WolfPy installation
+            if [ -d "$HOME/.Wolfram/Applications/WolfPy" ]; then
+                USER_APPS_DIR="$HOME/.Wolfram/Applications"
+            elif [ -d "$HOME/.Mathematica/Applications/WolfPy" ]; then
+                USER_APPS_DIR="$HOME/.Mathematica/Applications"
+            else
+                USER_APPS_DIR="$HOME/.Wolfram/Applications"  # Default for newer versions
+            fi
             ;;
         "CYGWIN"*|"MINGW"*|"MSYS"*)  # Windows
-            USER_APPS_DIR="$HOME/AppData/Roaming/Mathematica/Applications"
+            # Check both locations for WolfPy installation
+            if [ -d "$HOME/AppData/Roaming/Wolfram/Applications/WolfPy" ]; then
+                USER_APPS_DIR="$HOME/AppData/Roaming/Wolfram/Applications"
+            elif [ -d "$HOME/AppData/Roaming/Mathematica/Applications/WolfPy" ]; then
+                USER_APPS_DIR="$HOME/AppData/Roaming/Mathematica/Applications"
+            else
+                USER_APPS_DIR="$HOME/AppData/Roaming/Wolfram/Applications"  # Default for newer versions
+            fi
             ;;
         *)
             print_error "Unsupported operating system: $(uname)"

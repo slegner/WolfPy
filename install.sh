@@ -58,16 +58,47 @@ detect_mathematica() {
 find_user_applications_dir() {
     print_status "Finding Mathematica user Applications directory..."
     
-    # Platform-specific paths
+    # Platform-specific paths - check both Wolfram and Mathematica directories
     case "$(uname)" in
         "Darwin")  # macOS
-            USER_APPS_DIR="$HOME/Library/Mathematica/Applications"
+            # Try Wolfram first (newer versions), then Mathematica (older versions)
+            if [ -d "$HOME/Library/Wolfram/Applications" ]; then
+                USER_APPS_DIR="$HOME/Library/Wolfram/Applications"
+                print_status "Using Wolfram Applications directory (newer version)"
+            elif [ -d "$HOME/Library/Mathematica/Applications" ]; then
+                USER_APPS_DIR="$HOME/Library/Mathematica/Applications"
+                print_status "Using Mathematica Applications directory (older version)"
+            else
+                # Create the preferred directory (Wolfram for newer versions)
+                USER_APPS_DIR="$HOME/Library/Wolfram/Applications"
+                print_status "Neither directory exists, will create: $USER_APPS_DIR"
+            fi
             ;;
         "Linux")
-            USER_APPS_DIR="$HOME/.Mathematica/Applications"
+            # Try Wolfram first, then Mathematica
+            if [ -d "$HOME/.Wolfram/Applications" ]; then
+                USER_APPS_DIR="$HOME/.Wolfram/Applications"
+                print_status "Using Wolfram Applications directory (newer version)"
+            elif [ -d "$HOME/.Mathematica/Applications" ]; then
+                USER_APPS_DIR="$HOME/.Mathematica/Applications"
+                print_status "Using Mathematica Applications directory (older version)"
+            else
+                USER_APPS_DIR="$HOME/.Wolfram/Applications"
+                print_status "Neither directory exists, will create: $USER_APPS_DIR"
+            fi
             ;;
         "CYGWIN"*|"MINGW"*|"MSYS"*)  # Windows
-            USER_APPS_DIR="$HOME/AppData/Roaming/Mathematica/Applications"
+            # Try Wolfram first, then Mathematica
+            if [ -d "$HOME/AppData/Roaming/Wolfram/Applications" ]; then
+                USER_APPS_DIR="$HOME/AppData/Roaming/Wolfram/Applications"
+                print_status "Using Wolfram Applications directory (newer version)"
+            elif [ -d "$HOME/AppData/Roaming/Mathematica/Applications" ]; then
+                USER_APPS_DIR="$HOME/AppData/Roaming/Mathematica/Applications"
+                print_status "Using Mathematica Applications directory (older version)"
+            else
+                USER_APPS_DIR="$HOME/AppData/Roaming/Wolfram/Applications"
+                print_status "Neither directory exists, will create: $USER_APPS_DIR"
+            fi
             ;;
         *)
             print_error "Unsupported operating system: $(uname)"
